@@ -148,3 +148,21 @@ def test_sample_visible_residues_1lz1(n):
     assert len(visible) == min(n, 3)
     assert set(visible['seq_id']) <= {35, 57, 96}
 
+@pytest.mark.parametrize('n', [0, 1])
+def test_sample_visible_residues_1bna(n):
+    # This structure doesn't contain any amino acid residues, but that 
+    # shouldn't cause any problems.
+
+    atoms = mmdf.read_asymmetric_unit(CIF_DIR / '1bna.cif')
+    atoms = mmdf.assign_residue_ids(atoms, maintain_order=True)
+
+    grid = mmvox.Grid(length_voxels=15, resolution_A=1.0)
+
+    visible = sample_visible_residues(
+            rng=np.random.default_rng(0),
+            atoms=atoms,
+            grid=grid,
+            n=n,
+    )
+    assert len(visible) == 0
+

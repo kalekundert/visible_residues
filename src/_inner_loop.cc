@@ -55,7 +55,7 @@ _find_visible_residues(
 	auto n_backbone = residue_id_getter.size();
 	auto n_pick = out_indices.size();
 
-	if (n_pick < 1) {
+	if ((n_backbone < 3) || (n_pick < 1)) {
 		return 0;
 	}
 
