@@ -15,6 +15,7 @@
 #include <pybind11/eigen.h>
 
 #include <string>
+#include <cstdint>
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -31,8 +32,8 @@ using Eigen::Matrix4d;
 
 long
 _find_visible_residues(
-		py::array_t<long> residue_ids,
-		py::array_t<long> backbone_ids,
+		py::array_t<int64_t> residue_ids,
+		py::array_t<int64_t> backbone_ids,
 		py::array_t<double> atom_x_A,
 		py::array_t<double> atom_y_A,
 		py::array_t<double> atom_z_A,
@@ -42,7 +43,7 @@ _find_visible_residues(
 		Vector3d boundary_min_corner_A,
 		Vector3d boundary_max_corner_A,
 
-		py::array_t<long> out_indices,
+		py::array_t<int64_t> out_indices,
 		py::array_t<double> out_coords_A) {
 
 	auto residue_id_getter = residue_ids.template unchecked<1>();
@@ -178,6 +179,7 @@ _find_visible_residues(
 }
 
 PYBIND11_MODULE(_inner_loop, m) {
+
 	m.def(
 			"_find_visible_residues",
 			&_find_visible_residues,
@@ -192,6 +194,7 @@ PYBIND11_MODULE(_inner_loop, m) {
 			py::arg("boundary_max_corner_A"),
 			py::arg("out_indices").noconvert(),
 			py::arg("out_coords_A").noconvert());
+
 }
 
 
