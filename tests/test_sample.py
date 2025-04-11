@@ -48,6 +48,7 @@ def test_sample_visible_residues(n, grid, sphere, expected):
             bounding_sphere=sphere,
     )
     assert len(visible) == min(expected, n)
+    assert (visible['radius_A'] == sphere.radius_A).all()
 
 def test_sample_visible_residues_4rek_G49():
     # This is a residue with two completely separate backbone conformations.  

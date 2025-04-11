@@ -113,6 +113,7 @@ def sample_visible_residues(
             x='x',
             y='y',
             z='z',
+            radius_A=bounding_sphere.radius_A,
     )
 
 @cache
