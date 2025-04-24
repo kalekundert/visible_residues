@@ -2,7 +2,7 @@ import numpy as np
 import polars as pl
 import macromol_voxelize as mmvox
 
-from ._inner_loop import _find_visible_residues
+from . import _inner_loop
 from macromol_dataframe import Atoms, explode_residue_conformations
 from dataclasses import dataclass
 from functools import cache
@@ -15,6 +15,25 @@ class Sphere:
     center_A: NDArray[float]
     radius_A: float
 
+def find_visible_residues(
+        atoms: Atoms,
+        grid: mmvox.Grid,
+        *,
+        bounding_sphere: Optional[Sphere] = None,
+) -> pl.DataFrame:
+    backbone = (
+            _select_backbone(atoms)
+            .with_columns(
+                pl.col('residue_id').cast(pl.Int64).alias('shuffle_id')
+            )
+    )
+
+    return _find_visible_residues(
+            backbone, grid,
+            n=len(backbone),
+            bounding_sphere=bounding_sphere,
+    )
+
 def sample_visible_residues(
         rng: np.random.Generator,
         atoms: Atoms,
@@ -22,7 +41,7 @@ def sample_visible_residues(
         n: int,
         *,
         bounding_sphere: Optional[Sphere] = None,
-):
+) -> pl.DataFrame:
     """
     Find residues for which the bounding sphere is contained entirely within 
     the image.
@@ -58,62 +77,12 @@ def sample_visible_residues(
 
     Note that this function is most efficient for relatively small $n$.
     """
-
-    if bounding_sphere is None:
-        bounding_sphere = get_sidechain_bounding_sphere()
-
-    half_boundary_length_A = grid.length_A / 2 - bounding_sphere.radius_A
-    min_corner = grid.center_A - half_boundary_length_A
-    max_corner = grid.center_A + half_boundary_length_A
-
     backbone = _select_backbone(atoms)
     backbone = _shuffle_residues(rng, backbone)
-    backbone = explode_residue_conformations(backbone, 'alt_id_ex')
-    backbone = (
-            backbone
-            .sort('shuffle_id', 'alt_id_ex', 'backbone_id')
-            .rechunk()
-    )
 
-    probe_indices = np.zeros(n, dtype=int)
-    probe_coords_A = np.zeros((n, 3))
-
-    n_actual = _find_visible_residues(
-            backbone['shuffle_id'].to_numpy(allow_copy=False),
-            backbone['backbone_id'].to_numpy(allow_copy=False),
-            backbone['x'].to_numpy(allow_copy=False),
-            backbone['y'].to_numpy(allow_copy=False),
-            backbone['z'].to_numpy(allow_copy=False),
-            backbone['occupancy'].to_numpy(allow_copy=False),
-
-            bounding_sphere.center_A,
-            min_corner,
-            max_corner,
-
-            probe_indices,
-            probe_coords_A,
-    )
-
-    probe_indices = probe_indices[:n_actual]
-    probe_coords_A = probe_coords_A[:n_actual]
-
-    probes = pl.DataFrame({
-        'residue_id': backbone[probe_indices, 'residue_id'],
-        'alt_id_n': backbone[probe_indices, 'alt_id'],
-        'alt_id_ca': backbone[probe_indices + 1, 'alt_id'],
-        'alt_id_c': backbone[probe_indices + 2, 'alt_id'],
-        'x': probe_coords_A[:,0],
-        'y': probe_coords_A[:,1],
-        'z': probe_coords_A[:,2],
-    })
-
-    return probes.select(
-            residue_id='residue_id',
-            alt_ids=pl.struct(N='alt_id_n', CA='alt_id_ca', C='alt_id_c'),
-            x='x',
-            y='y',
-            z='z',
-            radius_A=bounding_sphere.radius_A,
+    return _find_visible_residues(
+            backbone, grid, n,
+            bounding_sphere=bounding_sphere,
     )
 
 @cache
@@ -166,5 +135,67 @@ def _shuffle_residues(rng, atoms):
             )
     )
     return atoms.join(shuffle_ids, on='residue_id')
+
+def _find_visible_residues(
+        backbone: Atoms,
+        grid: mmvox.Grid,
+        n: int,
+        *,
+        bounding_sphere: Optional[Sphere] = None,
+):
+    if bounding_sphere is None:
+        bounding_sphere = get_sidechain_bounding_sphere()
+
+    half_boundary_length_A = grid.length_A / 2 - bounding_sphere.radius_A
+    min_corner = grid.center_A - half_boundary_length_A
+    max_corner = grid.center_A + half_boundary_length_A
+
+    backbone = explode_residue_conformations(backbone, 'alt_id_ex')
+    backbone = (
+            backbone
+            .sort('shuffle_id', 'alt_id_ex', 'backbone_id')
+            .rechunk()
+    )
+
+    probe_indices = np.zeros(n, dtype=int)
+    probe_coords_A = np.zeros((n, 3))
+
+    n_actual = _inner_loop._find_visible_residues(
+            backbone['shuffle_id'].to_numpy(allow_copy=False),
+            backbone['backbone_id'].to_numpy(allow_copy=False),
+            backbone['x'].to_numpy(allow_copy=False),
+            backbone['y'].to_numpy(allow_copy=False),
+            backbone['z'].to_numpy(allow_copy=False),
+            backbone['occupancy'].to_numpy(allow_copy=False),
+
+            bounding_sphere.center_A,
+            min_corner,
+            max_corner,
+
+            probe_indices,
+            probe_coords_A,
+    )
+
+    probe_indices = probe_indices[:n_actual]
+    probe_coords_A = probe_coords_A[:n_actual]
+
+    probes = pl.DataFrame({
+        'residue_id': backbone[probe_indices, 'residue_id'],
+        'alt_id_n': backbone[probe_indices, 'alt_id'],
+        'alt_id_ca': backbone[probe_indices + 1, 'alt_id'],
+        'alt_id_c': backbone[probe_indices + 2, 'alt_id'],
+        'x': probe_coords_A[:,0],
+        'y': probe_coords_A[:,1],
+        'z': probe_coords_A[:,2],
+    })
+
+    return probes.select(
+            residue_id='residue_id',
+            alt_ids=pl.struct(N='alt_id_n', CA='alt_id_ca', C='alt_id_c'),
+            x='x',
+            y='y',
+            z='z',
+            radius_A=bounding_sphere.radius_A,
+    )
 
 

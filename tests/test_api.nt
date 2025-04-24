@@ -1,4 +1,4 @@
-test_sample_visible_residues:
+test_find_visible_residues:
   -
     id: origin-in
     grid:
