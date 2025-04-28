@@ -119,6 +119,7 @@ _find_visible_residues(
 			i = k + 1;
 			continue;
 		}
+		best_occupancies[residue_id] = occupancy;
 
 		Vector3d xyz_n(
 				x_getter(i),
