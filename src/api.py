@@ -1,10 +1,9 @@
 import numpy as np
 import polars as pl
-import macromol_voxelize as mmvox
 
 from . import _inner_loop
 from macromol_dataframe import Atoms, explode_residue_conformations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 
 from typing import Optional
@@ -15,9 +14,14 @@ class Sphere:
     center_A: NDArray[float]
     radius_A: float
 
+@dataclass
+class Grid:
+    length_A: float
+    center_A: NDArray[float] = field(default_factory=lambda: np.zeros(3))
+
 def find_visible_residues(
         atoms: Atoms,
-        grid: Optional[mmvox.Grid],
+        grid: Optional[Grid],
         *,
         bounding_sphere: Optional[Sphere] = None,
 ) -> pl.DataFrame:
@@ -37,7 +41,7 @@ def find_visible_residues(
 def sample_visible_residues(
         rng: np.random.Generator,
         atoms: Atoms,
-        grid: Optional[mmvox.Grid],
+        grid: Optional[Grid],
         n: int,
         *,
         bounding_sphere: Optional[Sphere] = None,
@@ -138,7 +142,7 @@ def _shuffle_residues(rng, atoms):
 
 def _find_visible_residues(
         backbone: Atoms,
-        grid: mmvox.Grid,
+        grid: Grid,
         n: int,
         *,
         bounding_sphere: Optional[Sphere] = None,

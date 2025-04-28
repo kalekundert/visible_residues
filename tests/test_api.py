@@ -1,11 +1,10 @@
 import macromol_dataframe as mmdf
-import macromol_voxelize as mmvox
 import numpy as np
 import parametrize_from_file as pff
 import pytest
 
 from visible_residues import (
-        sample_visible_residues, find_visible_residues, Sphere,
+        sample_visible_residues, find_visible_residues, Sphere, Grid,
 )
 from polars.testing import assert_frame_equal
 from functools import partial
@@ -24,9 +23,8 @@ FIND_OR_SAMPLE_VISIBLE_RESIDUE = pytest.mark.parametrize(
 )
 
 def grid(params):
-    return mmvox.Grid(
-            length_voxels=1,
-            resolution_A=float(params['length_A']),
+    return Grid(
+            length_A=float(params['length_A']),
             center_A=np.array(eval(params['center_A'])),
     )
 
@@ -163,7 +161,7 @@ def test_find_visible_residues_1lz1():
     atoms = mmdf.read_asymmetric_unit(CIF_DIR / '1lz1.cif')
     atoms = mmdf.assign_residue_ids(atoms, maintain_order=True)
 
-    grid = mmvox.Grid(length_voxels=15, resolution_A=1.0)
+    grid = Grid(length_A=15)
 
     visible = find_visible_residues(
             atoms=atoms,
@@ -187,7 +185,7 @@ def test_sample_visible_residues_1lz1(n):
     atoms = mmdf.read_asymmetric_unit(CIF_DIR / '1lz1.cif')
     atoms = mmdf.assign_residue_ids(atoms, maintain_order=True)
 
-    grid = mmvox.Grid(length_voxels=15, resolution_A=1.0)
+    grid = Grid(length_A=15)
 
     visible = sample_visible_residues(
             rng=np.random.default_rng(0),

@@ -23,7 +23,6 @@ dependencies = [
   'numpy',
   'polars',
   'macromol_dataframe',
-  'macromol_voxelize',
 ]
 
 [project.optional-dependencies]
