@@ -98,17 +98,9 @@ def test_find_visible_residues_4rek_G49(find_visible_residue):
         atoms = mmdf.read_asymmetric_unit(CIF_DIR / f'4rek_G49_{alt_ids}.cif')
         atoms = mmdf.assign_residue_ids(atoms, maintain_order=True)
 
-        # We're not trying to exclude any atoms in this test, so the grid just 
-        # needs to fit everything.
-        grid = mmvox.Grid(
-                length_voxels=15,
-                resolution_A=1.0,
-                center_A=np.array([0, -5, 30]),
-        )
-
         return find_visible_residue(
                 atoms=atoms,
-                grid=grid,
+                grid=None,
         )
 
     visible_A = find_visible('A')
@@ -133,17 +125,9 @@ def test_find_visible_residues_4rek_M154(find_visible_residue):
         atoms = mmdf.read_asymmetric_unit(CIF_DIR / f'4rek_M154_{alt_ids}.cif')
         atoms = mmdf.assign_residue_ids(atoms, maintain_order=True)
 
-        # We're not trying to exclude any atoms in this test, so the grid just 
-        # needs to fit everything.
-        grid = mmvox.Grid(
-                length_voxels=15,
-                resolution_A=1.0,
-                center_A=np.array([25, -15, 20]),
-        )
-
         return find_visible_residue(
                 atoms=atoms,
-                grid=grid,
+                grid=None,
         )
 
     visible_A = find_visible('A')
@@ -166,11 +150,9 @@ def test_find_visible_residues_1bna(find_visible_residue):
     atoms = mmdf.read_asymmetric_unit(CIF_DIR / '1bna.cif')
     atoms = mmdf.assign_residue_ids(atoms, maintain_order=True)
 
-    grid = mmvox.Grid(length_voxels=15, resolution_A=1.0)
-
     visible = find_visible_residue(
             atoms=atoms,
-            grid=grid,
+            grid=None,
     )
     assert len(visible) == 0
 

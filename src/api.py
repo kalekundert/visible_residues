@@ -17,7 +17,7 @@ class Sphere:
 
 def find_visible_residues(
         atoms: Atoms,
-        grid: mmvox.Grid,
+        grid: Optional[mmvox.Grid],
         *,
         bounding_sphere: Optional[Sphere] = None,
 ) -> pl.DataFrame:
@@ -37,7 +37,7 @@ def find_visible_residues(
 def sample_visible_residues(
         rng: np.random.Generator,
         atoms: Atoms,
-        grid: mmvox.Grid,
+        grid: Optional[mmvox.Grid],
         n: int,
         *,
         bounding_sphere: Optional[Sphere] = None,
@@ -146,9 +146,13 @@ def _find_visible_residues(
     if bounding_sphere is None:
         bounding_sphere = get_sidechain_bounding_sphere()
 
-    half_boundary_length_A = grid.length_A / 2 - bounding_sphere.radius_A
-    min_corner = grid.center_A - half_boundary_length_A
-    max_corner = grid.center_A + half_boundary_length_A
+    if grid is None:
+        min_corner = np.full(3, -np.inf)
+        max_corner = np.full(3, np.inf)
+    else:
+        half_boundary_length_A = grid.length_A / 2 - bounding_sphere.radius_A
+        min_corner = grid.center_A - half_boundary_length_A
+        max_corner = grid.center_A + half_boundary_length_A
 
     backbone = explode_residue_conformations(backbone, 'alt_id_ex')
     backbone = (
