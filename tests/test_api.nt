@@ -179,3 +179,23 @@ test_find_visible_residues:
       center_A: [0.0, 0.0, 1.0]
       radius_A: 4
     expected: False
+  -
+    id: visible-rule-any-in
+    grid:
+      center_A: [0.0, 0.0, 0.0]
+      length_A: 8
+    sphere:
+      center_A: [0.0, 0.0, 6.0]
+      radius_A: 2.1
+    visible_rule: any
+    expected: True
+  -
+    id: visible-rule-any-out
+    grid:
+      center_A: [0.0, 0.0, 0.0]
+      length_A: 8
+    sphere:
+      center_A: [0.0, 0.0, 6.0]
+      radius_A: 1.9
+    visible_rule: any
+    expected: False

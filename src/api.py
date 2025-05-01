@@ -6,10 +6,10 @@ from macromol_dataframe import Atoms, explode_residue_conformations
 from dataclasses import dataclass, field
 from functools import cache
 
-from typing import Optional
+from typing import Optional, Literal
 from numpy.typing import NDArray
 
-@dataclass
+@dataclass(frozen=True)
 class Sphere:
     center_A: NDArray[float]
     radius_A: float
@@ -23,7 +23,8 @@ def find_visible_residues(
         atoms: Atoms,
         grid: Optional[Grid],
         *,
-        bounding_sphere: Optional[Sphere] = None,
+        sidechain_sphere: Optional[Sphere] = None,
+        visible_rule: Literal['all', 'any'] = 'all',
 ) -> pl.DataFrame:
     backbone = (
             _select_backbone(atoms)
@@ -35,7 +36,8 @@ def find_visible_residues(
     return _find_visible_residues(
             backbone, grid,
             n=len(backbone),
-            bounding_sphere=bounding_sphere,
+            sidechain_sphere=sidechain_sphere,
+            visible_rule=visible_rule,
     )
 
 def sample_visible_residues(
@@ -44,10 +46,11 @@ def sample_visible_residues(
         grid: Optional[Grid],
         n: int,
         *,
-        bounding_sphere: Optional[Sphere] = None,
+        sidechain_sphere: Optional[Sphere] = None,
+        visible_rule: Literal['all', 'any'] = 'all',
 ) -> pl.DataFrame:
     """
-    Find residues for which the bounding sphere is contained entirely within 
+    Find residues for which the sidechain sphere is contained entirely within 
     the image.
 
     Arguments:
@@ -69,9 +72,14 @@ def sample_visible_residues(
         n:
             The maximum number of visible residues to sample.
 
-        bounding_sphere:
+        sidechain_sphere:
             A simplified representation of the region where most sidechain 
             atoms are expected to be found.  See experiment #127 for details.
+
+        visible_rule:
+            How much of the sidechain sphere must be contained within the image 
+            for the residue to be considered visible.  This must be either 
+            "all" or "any".  The default is "all".
 
     Returns:
         A dataframe listing all of residues for which the bounding sphere fits 
@@ -86,11 +94,12 @@ def sample_visible_residues(
 
     return _find_visible_residues(
             backbone, grid, n,
-            bounding_sphere=bounding_sphere,
+            sidechain_sphere=sidechain_sphere,
+            visible_rule=visible_rule,
     )
 
 @cache
-def get_sidechain_bounding_sphere() -> Sphere:
+def get_sidechain_sphere() -> Sphere:
     # The center coordinate is in a frame aligned with the N, Cα, and C atoms, 
     # and is optimized to include ≈95% of all observed sidechain atoms.  See 
     # experiment #127 for details.
@@ -145,16 +154,24 @@ def _find_visible_residues(
         grid: Grid,
         n: int,
         *,
-        bounding_sphere: Optional[Sphere] = None,
+        sidechain_sphere: Optional[Sphere] = None,
+        visible_rule: Literal['all', 'any'] = 'all',
 ):
-    if bounding_sphere is None:
-        bounding_sphere = get_sidechain_bounding_sphere()
+    if sidechain_sphere is None:
+        sidechain_sphere = get_sidechain_sphere()
 
     if grid is None:
         min_corner = np.full(3, -np.inf)
         max_corner = np.full(3, np.inf)
     else:
-        half_boundary_length_A = grid.length_A / 2 - bounding_sphere.radius_A
+        if visible_rule == 'all':
+            delta_length_A = -sidechain_sphere.radius_A
+        elif visible_rule == 'any':
+            delta_length_A = sidechain_sphere.radius_A
+        else:
+            raise ValueError(f"unknown visible rule: {visible_rule}")
+
+        half_boundary_length_A = grid.length_A / 2 + delta_length_A
         min_corner = grid.center_A - half_boundary_length_A
         max_corner = grid.center_A + half_boundary_length_A
 
@@ -176,7 +193,7 @@ def _find_visible_residues(
             backbone['z'].to_numpy(allow_copy=False),
             backbone['occupancy'].to_numpy(allow_copy=False),
 
-            bounding_sphere.center_A,
+            sidechain_sphere.center_A,
             min_corner,
             max_corner,
 
@@ -203,7 +220,7 @@ def _find_visible_residues(
             x='x',
             y='y',
             z='z',
-            radius_A=bounding_sphere.radius_A,
+            radius_A=sidechain_sphere.radius_A,
     )
 
 

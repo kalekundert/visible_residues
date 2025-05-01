@@ -28,7 +28,7 @@ def grid(params):
             center_A=np.array(eval(params['center_A'])),
     )
 
-def bounding_sphere(params):
+def sidechain_sphere(params):
     return Sphere(
             center_A=np.array(eval(params['center_A'])),
             radius_A=float(params['radius_A']),
@@ -36,13 +36,18 @@ def bounding_sphere(params):
 
 
 @pff.parametrize(
-        schema=pff.cast(
-            grid=grid,
-            sphere=bounding_sphere,
-            expected=eval,
-        ),
+        schema=[
+            pff.cast(
+                grid=grid,
+                sphere=sidechain_sphere,
+                expected=eval,
+            ),
+            pff.defaults(
+                visible_rule='all',
+            ),
+        ],
 )
-def test_find_visible_residues(grid, sphere, expected):
+def test_find_visible_residues(grid, sphere, visible_rule, expected):
     # I deliberately constructed this amino acid structure so that the global 
     # and residue-local coordinate frames are the same, to make it easy to 
     # reason about the expected results.
@@ -53,7 +58,8 @@ def test_find_visible_residues(grid, sphere, expected):
     visible = find_visible_residues(
             atoms=atoms,
             grid=grid,
-            bounding_sphere=sphere,
+            sidechain_sphere=sphere,
+            visible_rule=visible_rule,
     )
     assert len(visible) == expected
     assert (visible['radius_A'] == sphere.radius_A).all()
@@ -61,13 +67,18 @@ def test_find_visible_residues(grid, sphere, expected):
 @pytest.mark.parametrize('n', [0, 1, 2])
 @pff.parametrize(
         key='test_find_visible_residues',
-        schema=pff.cast(
-            grid=grid,
-            sphere=bounding_sphere,
-            expected=eval,
-        ),
+        schema=[
+            pff.cast(
+                grid=grid,
+                sphere=sidechain_sphere,
+                expected=eval,
+            ),
+            pff.defaults(
+                visible_rule='all',
+            ),
+        ],
 )
-def test_sample_visible_residues(n, grid, sphere, expected):
+def test_sample_visible_residues(n, grid, sphere, visible_rule, expected):
     # I deliberately constructed this amino acid structure so that the global 
     # and residue-local coordinate frames are the same, to make it easy to 
     # reason about the expected results.
@@ -80,7 +91,8 @@ def test_sample_visible_residues(n, grid, sphere, expected):
             atoms=atoms,
             grid=grid,
             n=n,
-            bounding_sphere=sphere,
+            sidechain_sphere=sphere,
+            visible_rule=visible_rule,
     )
     assert len(visible) == min(expected, n)
     assert (visible['radius_A'] == sphere.radius_A).all()
